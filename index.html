@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cursor Chat Demo</title>
+  </head>
+  <body>
+    <div id="cursor-layer"></div>
+    <div id="app">
+      <h1>Cursor Party</h1>
+      <p>Intro to Computer Networking and Peer-to-peer. Welcome to Hack the North 2022 :))</p>
+    </div>
+  </body>
+  <script>
+    // function to create a new cursor element!
+    function cursorFactory(id, color) {
+      const htmlFragment = `<div id="cursor_${id}" class="cursor">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 35 35"
+          fill="none"
+          fillRule="evenodd"
+        >
+          <g fill="rgba(0,0,0,.2)" transform="translate(1,1)">
+            <path d="m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" />
+            <path d="m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" />
+          </g>
+          <g fill="white">
+            <path d="m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" />
+            <path d="m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" />
+          </g>
+          <g fill="${color}">
+            <path d="m19.751 24.4155-1.844.774-3.1-7.374 1.841-.775z" />
+            <path d="m13 10.814v11.188l2.969-2.866.428-.139h4.768z" />
+          </g>
+        </svg>
+      </div>`;
+      const template = document.createElement('template');
+      template.innerHTML = htmlFragment;
+      const cursorEl = template.content.firstChild;
+      return cursorEl;
+    }
+  </script>
+  <script type="module">
+    // setup imports
+    import * as Y from 'https://esm.sh/yjs@13';
+    import { WebsocketProvider } from 'https://esm.sh/y-websocket@1.4.0';
+    import { PerfectCursor } from 'https://esm.sh/perfect-cursors@1.0.5';
+    import { nanoid } from 'https://esm.sh/nanoid@3.3.1';
+    import randomcolor from 'https://esm.sh/randomcolor@0.6.2';
+
+    // yjs and document setup
+    const div = document.getElementById("cursor-layer");
+    const our_id = nanoid();
+    const room_id = "cursor-party";
+    const doc = new Y.Doc();
+    const provider = new WebsocketProvider(
+      "wss://demos.yjs.dev",
+      room_id,
+      doc
+    );
+
+    // setup our data
+    let sendUpdate = true;
+    let cursor_metadata = undefined;
+    let me = {
+      id: our_id,
+      color: randomcolor(),
+      x: 0,
+      y: 0,
+    };
+
+    // initialize our little cursor :))
+    const cursor = cursorFactory(me.id, me.color);
+    div.appendChild(cursor);
+    document.onmousemove = (evt) => {
+      // attach a listener for mouse movement
+      if (me.x !== evt.pageX && me.y !== evt.pageY) {
+        sendUpdate = true;
+        me.x = evt.pageX;
+        me.y = evt.pageY;
+        cursor.style.setProperty("transform", `translate(${me.x}px, ${me.y}px)`)
+      }
+    };
+
+    // replication every 80ms
+    let replicated_cursors = doc.getMap('state');
+    addEventListener('beforeunload', () => {
+      replicated_cursors.delete(me.id);
+    });
+    setInterval(() => {
+      if (sendUpdate) {
+        replicated_cursors.set(me.id, me);
+        sendUpdate = false;
+      }
+    }, 80);
+
+    // https://docs.yjs.dev/api/shared-types/y.map
+    const cursor_interp = new Map();
+    replicated_cursors.observe(evt => {
+      const updated_cursors = evt.changes.keys;
+      updated_cursors.forEach((change, cursor_id) => {
+        if (cursor_id !== me.id) {
+          switch (change.action) {
+            case 'add':
+              // make a new cursor
+              const new_cursor = replicated_cursors.get(cursor_id);
+              const new_cursor_div = cursorFactory(new_cursor.id, new_cursor.color);
+              div.appendChild(new_cursor_div);
+              const add_point_closure = ([x, y]) => new_cursor_div.style.setProperty("transform", `translate(${x}px, ${y}px)`);
+              const perfect_cursor = new PerfectCursor(add_point_closure);
+              perfect_cursor.addPoint([new_cursor.x, new_cursor.y]);
+              cursor_interp.set(cursor_id, perfect_cursor);      
+              break;
+            case 'update':
+              const updated_cursor = replicated_cursors.get(cursor_id);
+              cursor_interp.get(cursor_id).addPoint([updated_cursor.x, updated_cursor.y]);
+              break;
+            case 'delete':
+              const old_cursor_div = document.getElementById(`cursor_${cursor_id}`);
+              old_cursor_div.remove();
+              cursor_interp.delete(cursor_id);
+              break;
+          }
+        }
+      });
+    });
+  </script>
+  <style>
+  body {
+    padding: 0;
+    margin: 0;
+  }
+
+  * { cursor: none; }
+
+  #app {
+    font-family: Inter, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    position: absolute; 
+    left: 0; 
+    right: 0; 
+    margin: 35vh auto;
+    height: 30vh;
+    width: 30vw;
+  }
+
+  #cursor-layer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    overflow: hidden;
+    pointer-events: none;
+    top: 0px;
+    left: 0px;
+  }
+
+  .cursor {
+    transition: 0.1s ease translate;
+  }
+
+  #cursor-layer .cursor > svg {
+    position: absolute;
+    top: -10px;
+    left: -14px;
+    width: 35px;
+    height: 35px;
+  }
+  </style>
+</html>
