@@ -36,8 +36,7 @@ If we look at console now, we can see our data being updated as we move our curs
 ```javascript
 const room_id = "cursor-party";
 const doc = new Y.Doc();
-const provider = new WebsocketProvider(
-  "wss://demos.yjs.dev",
+const provider = new WebrtcProvider(
   room_id,
   doc
 );
