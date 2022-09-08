@@ -4,9 +4,8 @@
 
 ```javascript
 // setup our data
-const our_id = nanoid();
 let me = {
-  id: our_id,
+  id: nanoid(),
   color: randomcolor(),
   x: 0,
   y: 0,
@@ -18,12 +17,11 @@ const div = document.getElementById("cursor-layer");
 div.appendChild(cursor);
 document.onmousemove = (evt) => {
   // attach a listener for mouse movement
-  if (me.x !== evt.pageX && me.y !== evt.pageY) {
+  if (me.x !== evt.pageX || me.y !== evt.pageY) {
     sendUpdate = true;
     me.x = evt.pageX;
     me.y = evt.pageY;
-    cursor.style.setProperty("transform", `translate(${me.x}px, ${me.y}px)`)
-
+    cursor.style.setProperty("transform", `translate(${me.x}px, ${me.y}px)`);
     console.log(me)
   }
 };
@@ -34,10 +32,9 @@ If we look at console now, we can see our data being updated as we move our curs
 ## 2) Let's replicate it!
 
 ```javascript
-const room_id = "cursor-party";
 const doc = new Y.Doc();
 const provider = new WebrtcProvider(
-  room_id,
+  "cursor-party",
   doc
 );
 
